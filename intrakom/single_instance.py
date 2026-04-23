@@ -79,9 +79,13 @@ def _acquire_posix(name: str) -> Optional[Any]:
 
 
 def _acquire_windows(name: str) -> Optional[Any]:
-    import win32event
-    import win32api
-    import winerror
+    try:
+        import win32event
+        import win32api
+        import winerror
+    except ModuleNotFoundError:
+        logger.warning("pywin32 not available; single-instance enforcement skipped")
+        return True  # non-None sentinel: allow startup
 
     handle = win32event.CreateMutex(None, False, f"Global\\{_key(name)}")
     if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
