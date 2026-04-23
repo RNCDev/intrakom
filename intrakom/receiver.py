@@ -19,6 +19,7 @@ import sys
 import threading
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 from urllib.parse import quote
 
 import sounddevice as sd
@@ -100,6 +101,9 @@ _sample_rate: int = 44100     # written before _buf_ready.set(); safe without lo
 _buf_ready = threading.Event()  # buffer has >= jitter_ms of audio; start playback
 _stop_evt = threading.Event()   # STOP received or ws disconnected mid-stream
 
+_stream: Optional[sd.RawOutputStream] = None
+_stream_sr: int = 0
+
 _AUDIO_QUEUE_MAX_CHUNKS = 200   # ~6s at 16kHz mono int16, ~400KB
 _queue_drop_warned_at: float = 0.0
 
@@ -136,6 +140,56 @@ _ssl_ctx.verify_mode = _ssl.CERT_NONE
 # Playback thread
 # ---------------------------------------------------------------------------
 
+def _playback_iteration() -> None:
+    """Run one START→STOP playback cycle. Reuses open stream if sample rate unchanged."""
+    global _buffered_bytes, _stream, _stream_sr
+
+    sr = _sample_rate
+
+    try:
+        if _stream is None or _stream_sr != sr:
+            if _stream is not None:
+                try:
+                    _stream.stop()
+                    _stream.close()
+                except Exception:
+                    pass
+            _stream = sd.RawOutputStream(
+                samplerate=sr, channels=1, dtype="int16", blocksize=1024
+            )
+            _stream.start()
+            _stream_sr = sr
+            logger.info("Audio stream opened at %d Hz", sr)
+
+        while True:
+            with _audio_cv:
+                while not _audio_queue and not _stop_evt.is_set():
+                    _audio_cv.wait(timeout=0.1)
+                chunk = _audio_queue.popleft() if _audio_queue else None
+                if chunk:
+                    _buffered_bytes -= len(chunk)
+
+            if chunk is None:
+                break  # _stop_evt set and queue drained
+
+            try:
+                _stream.write(chunk)
+            except Exception as exc:
+                logger.error("Stream write error: %s", exc)
+                _stream = None  # force reopen on next START
+                break
+
+    except Exception as exc:
+        logger.error("Failed to open audio device: %s", exc)
+        _stream = None
+
+    finally:
+        _stop_evt.clear()
+        with _audio_cv:
+            _audio_queue.clear()
+            _buffered_bytes = 0
+
+
 def playback_thread_func():
     global _buffered_bytes
 
@@ -148,44 +202,7 @@ def playback_thread_func():
             _stop_evt.clear()
             continue
 
-        sr = _sample_rate
-        logger.info("Opening audio stream at %d Hz", sr)
-
-        try:
-            stream = sd.RawOutputStream(
-                samplerate=sr, channels=1, dtype="int16", blocksize=1024
-            )
-            stream.start()
-
-            while True:
-                with _audio_cv:
-                    while not _audio_queue and not _stop_evt.is_set():
-                        _audio_cv.wait(timeout=0.1)
-                    chunk = _audio_queue.popleft() if _audio_queue else None
-                    if chunk:
-                        _buffered_bytes -= len(chunk)
-
-                if chunk is None:
-                    break  # _stop_evt set and queue drained
-
-                try:
-                    stream.write(chunk)
-                except Exception as exc:
-                    logger.error("Stream write error: %s", exc)
-                    break
-
-            stream.stop()
-            stream.close()
-            logger.info("Audio stream closed")
-
-        except Exception as exc:
-            logger.error("Failed to open audio device: %s", exc)
-
-        finally:
-            _stop_evt.clear()
-            with _audio_cv:
-                _audio_queue.clear()
-                _buffered_bytes = 0
+        _playback_iteration()
 
 
 # ---------------------------------------------------------------------------

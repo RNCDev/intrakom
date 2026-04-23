@@ -3,6 +3,7 @@ import sys
 import collections
 import threading
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,11 +19,15 @@ def reset_audio_state():
     rcv._bytes_needed = 0
     rcv._buf_ready.clear()
     rcv._stop_evt.clear()
+    rcv._stream = None
+    rcv._stream_sr = 0
     yield
     rcv._audio_queue.clear()
     rcv._buffered_bytes = 0
     rcv._buf_ready.clear()
     rcv._stop_evt.clear()
+    rcv._stream = None
+    rcv._stream_sr = 0
 
 
 def test_queue_accepts_chunks_below_cap():
@@ -53,3 +58,60 @@ def test_buffered_bytes_stays_accurate_after_drop():
     assert rcv._buffered_bytes == expected
     rcv._enqueue_audio(chunk)
     assert rcv._buffered_bytes == expected
+
+
+def test_audio_stream_reused_for_same_sample_rate():
+    """RawOutputStream must be instantiated only once across two START/STOP cycles at the same sample rate."""
+    call_count = 0
+
+    def make_stream(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        m = MagicMock()
+        m.write = MagicMock()
+        return m
+
+    with patch("sounddevice.RawOutputStream", side_effect=make_stream):
+        rcv._sample_rate = 16000
+        rcv._bytes_needed = 0
+
+        # Cycle 1
+        rcv._enqueue_audio(b"\x00" * 32)
+        rcv._buf_ready.set()
+        rcv._stop_evt.set()
+        rcv._playback_iteration()
+
+        # Cycle 2 — same sample rate
+        rcv._enqueue_audio(b"\x00" * 32)
+        rcv._buf_ready.set()
+        rcv._stop_evt.set()
+        rcv._playback_iteration()
+
+    assert call_count == 1, f"Expected 1 stream creation, got {call_count}"
+
+
+def test_audio_stream_reopened_for_different_sample_rate():
+    """RawOutputStream must be recreated when sample rate changes between transmissions."""
+    call_count = 0
+
+    def make_stream(**kwargs):
+        nonlocal call_count
+        call_count += 1
+        return MagicMock()
+
+    with patch("sounddevice.RawOutputStream", side_effect=make_stream):
+        rcv._sample_rate = 16000
+        rcv._bytes_needed = 0
+        rcv._enqueue_audio(b"\x00" * 32)
+        rcv._buf_ready.set()
+        rcv._stop_evt.set()
+        rcv._playback_iteration()
+
+        # Change sample rate between transmissions
+        rcv._sample_rate = 44100
+        rcv._enqueue_audio(b"\x00" * 32)
+        rcv._buf_ready.set()
+        rcv._stop_evt.set()
+        rcv._playback_iteration()
+
+    assert call_count == 2, f"Expected 2 stream creations (rate changed), got {call_count}"
