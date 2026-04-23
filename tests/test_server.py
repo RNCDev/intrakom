@@ -296,6 +296,17 @@ def test_receiver_disconnect_releases_sender_ownership(client):
         assert "Kitchen" not in srv.receiver_owners
 
 
+def test_startup_banner_logs_port_scheme_mdns(caplog, client):
+    """Startup banner must log Port:, TLS:, and mDNS: lines."""
+    import logging
+    with caplog.at_level(logging.INFO, logger="intercom"):
+        with TestClient(srv.app):
+            log_text = caplog.text
+    assert "Port:" in log_text
+    assert "TLS:" in log_text
+    assert "mDNS:" in log_text
+
+
 def test_record_fwd_warn_evicts_oldest_at_capacity():
     srv._last_fwd_warn.clear()
     # Fill to capacity

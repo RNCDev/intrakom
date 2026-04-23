@@ -35,6 +35,7 @@ def main():
     else:
         os.environ["INTRAKOM_SCHEME"] = "http"
 
+    os.environ["INTRAKOM_PORT"] = str(args.port)
     uvicorn.run(**kwargs)
 
 

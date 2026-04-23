@@ -109,26 +109,34 @@ def detect_lan_ip() -> str:
 
 @asynccontextmanager
 async def _lifespan(app):
-    # Startup banner (moved from @app.on_event("startup"))
     lan_ip = detect_lan_ip()
     hostname = socket.gethostname()
+    port = int(os.environ.get("INTRAKOM_PORT", "8000"))
+    scheme = os.environ.get("INTRAKOM_SCHEME", "https" if _ssl_context() else "http")
+    mdns_disabled = bool(os.environ.get("INTRAKOM_DISABLE_MDNS"))
+    tls_label = "enabled (cert found)" if scheme == "https" else "disabled (no cert)"
+    mdns_label = "disabled (INTRAKOM_DISABLE_MDNS set)" if mdns_disabled else "enabled"
+
     logger.info("=" * 60)
     logger.info("Intercom server starting up")
-    scheme = os.environ.get("INTRAKOM_SCHEME", "https" if _ssl_context() else "http")
-    logger.info("LAN URL:      %s://%s:8000", scheme, lan_ip)
-    logger.info("Hostname URL: %s://%s:8000", scheme, hostname)
+    logger.info("Port:         %d", port)
+    logger.info("LAN URL:      %s://%s:%d", scheme, lan_ip, port)
+    logger.info("Hostname URL: %s://%s:%d", scheme, hostname, port)
+    logger.info("TLS:          %s", tls_label)
+    logger.info("mDNS:         %s", mdns_label)
     logger.info("=" * 60)
     print(f"\n{'='*60}")
     print(f"  Intercom Server Ready")
-    print(f"  LAN URL:      {scheme}://{lan_ip}:8000")
-    print(f"  Hostname URL: {scheme}://{hostname}:8000")
+    print(f"  LAN URL:      {scheme}://{lan_ip}:{port}")
+    print(f"  Hostname URL: {scheme}://{hostname}:{port}")
+    print(f"  TLS:          {tls_label}")
+    print(f"  mDNS:         {mdns_label}")
     print(f"{'='*60}\n")
 
     zc = None
-    import os as _os
-    if not _os.environ.get("INTRAKOM_DISABLE_MDNS"):
+    if not mdns_disabled:
         try:
-            zc = _mdns.advertise_hub(port=8000, version=HUB_VERSION)
+            zc = _mdns.advertise_hub(port=port, version=HUB_VERSION)
         except Exception as exc:
             logger.warning("mDNS advertise failed: %s", exc)
     try:
