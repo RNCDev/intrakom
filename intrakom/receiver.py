@@ -100,6 +100,32 @@ _sample_rate: int = 44100     # written before _buf_ready.set(); safe without lo
 _buf_ready = threading.Event()  # buffer has >= jitter_ms of audio; start playback
 _stop_evt = threading.Event()   # STOP received or ws disconnected mid-stream
 
+_AUDIO_QUEUE_MAX_CHUNKS = 200   # ~6s at 16kHz mono int16, ~400KB
+_queue_drop_warned_at: float = 0.0
+
+
+def _enqueue_audio(chunk: bytes) -> None:
+    """Append audio chunk to queue, dropping the oldest if at capacity."""
+    global _buffered_bytes, _queue_drop_warned_at
+    import time as _time
+
+    with _audio_cv:
+        if len(_audio_queue) >= _AUDIO_QUEUE_MAX_CHUNKS:
+            dropped = _audio_queue.popleft()
+            _buffered_bytes -= len(dropped)
+            now = _time.monotonic()
+            if now - _queue_drop_warned_at >= 5.0:
+                _queue_drop_warned_at = now
+                logger.warning(
+                    "Audio queue full (%d chunks); dropping oldest chunk",
+                    _AUDIO_QUEUE_MAX_CHUNKS,
+                )
+        _audio_queue.append(chunk)
+        _buffered_bytes += len(chunk)
+        if _buffered_bytes >= _bytes_needed and not _buf_ready.is_set():
+            _buf_ready.set()
+        _audio_cv.notify_all()
+
 # SSL context for wss:// (self-signed LAN certs, no hostname verification)
 _ssl_ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
 _ssl_ctx.check_hostname = False
@@ -187,12 +213,7 @@ async def ws_client(cfg: ReceiverConfig):
 
                 async for message in ws:
                     if isinstance(message, bytes):
-                        with _audio_cv:
-                            _audio_queue.append(message)
-                            _buffered_bytes += len(message)
-                            if _buffered_bytes >= _bytes_needed and not _buf_ready.is_set():
-                                _buf_ready.set()
-                            _audio_cv.notify_all()
+                        _enqueue_audio(message)
 
                     elif isinstance(message, str):
                         try:
