@@ -1,0 +1,13 @@
+[Unit]
+Description=Intrakom Receiver
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/intrakom-receiver
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

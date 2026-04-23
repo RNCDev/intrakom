@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.intrakom.receiver</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>BINARY_PATH</string>
+    <string>--name</string>
+    <string>RECEIVER_NAME</string>
+    <string>--hub</string>
+    <string>HUB_URL</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>LOG_DIR/receiver.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>LOG_DIR/receiver.log</string>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>

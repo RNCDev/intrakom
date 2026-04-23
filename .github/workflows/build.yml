@@ -1,0 +1,216 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  INTRAKOM_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '0.0.0-dev' }}
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Test
+  # ---------------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run tests
+        env:
+          INTRAKOM_DISABLE_MDNS: "1"
+        run: pytest tests/ -q
+
+  # ---------------------------------------------------------------------------
+  # Build receiver binary for each platform
+  # ---------------------------------------------------------------------------
+  build-receiver:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            label: macos-arm64
+            os: macos
+          - runner: windows-latest
+            label: windows-x64
+            os: windows
+          - runner: ubuntu-latest
+            label: linux-x64
+            os: linux
+          - runner: ubuntu-24.04-arm
+            label: linux-arm64
+            os: linux
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install portaudio (macOS)
+        if: matrix.os == 'macos'
+        run: brew install portaudio
+
+      - name: Install system deps (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libportaudio2 portaudio19-dev ruby ruby-dev
+          sudo gem install --no-document fpm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Stamp version
+        shell: bash
+        run: |
+          VER="${INTRAKOM_VERSION#v}"
+          printf 'VERSION = "%s"\n' "$VER" > intrakom/_version.py
+
+      - name: Build binary
+        run: pyinstaller receiver.spec
+
+      - name: Bundle (macOS)
+        if: matrix.os == 'macos'
+        shell: bash
+        run: |
+          B="dist/intrakom-receiver-${{ matrix.label }}"
+          mkdir -p "$B"
+          cp dist/intrakom-receiver "$B/"
+          cp packaging/macos/install.sh "$B/"
+          cp packaging/macos/uninstall.sh "$B/"
+          cp packaging/macos/com.intrakom.receiver.plist.template "$B/"
+          chmod +x "$B/install.sh" "$B/uninstall.sh"
+          cd dist && zip -r "intrakom-receiver-${{ matrix.label }}.zip" "intrakom-receiver-${{ matrix.label }}"
+
+      - name: Bundle (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $B = "dist\intrakom-receiver-${{ matrix.label }}"
+          New-Item -ItemType Directory -Force $B | Out-Null
+          Copy-Item dist\intrakom-receiver.exe $B\
+          Copy-Item packaging\windows\install.bat $B\
+          Copy-Item packaging\windows\uninstall.bat $B\
+          Compress-Archive -Path $B -DestinationPath "dist\intrakom-receiver-${{ matrix.label }}.zip"
+
+      - name: Bundle (Linux)
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          B="dist/intrakom-receiver-${{ matrix.label }}"
+          mkdir -p "$B"
+          cp dist/intrakom-receiver "$B/"
+          cp packaging/linux/intrakom-receiver.service "$B/"
+          cd dist && tar czf "intrakom-receiver-${{ matrix.label }}.tar.gz" "intrakom-receiver-${{ matrix.label }}"
+
+      - name: Build .deb (Linux)
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          VER="${INTRAKOM_VERSION#v}"
+          ARCH="$([ '${{ matrix.label }}' = 'linux-arm64' ] && echo arm64 || echo amd64)"
+          fpm -s dir -t deb \
+            --name intrakom-receiver \
+            --version "$VER" \
+            --architecture "$ARCH" \
+            --description "Intrakom headless audio receiver daemon" \
+            "dist/intrakom-receiver=/usr/local/bin/intrakom-receiver" \
+            "packaging/linux/intrakom-receiver.service=/lib/systemd/system/intrakom-receiver.service"
+          mv intrakom-receiver_*.deb dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: receiver-${{ matrix.label }}
+          path: |
+            dist/intrakom-receiver-${{ matrix.label }}.zip
+            dist/intrakom-receiver-${{ matrix.label }}.tar.gz
+            dist/intrakom-receiver_*.deb
+          if-no-files-found: ignore
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Create GitHub Release (tag pushes only)
+  # ---------------------------------------------------------------------------
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-receiver
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Collect release files
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name '*.zip' -o -name '*.tar.gz' -o -name '*.deb' \) \
+            -exec cp {} release/ \;
+          ls -lh release/
+
+      - name: Compute SHA-256 checksums
+        run: cd release && sha256sum * | tee ../checksums.txt
+
+      - name: Write release notes
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          VER="${INTRAKOM_VERSION#v}"
+          cat > release_notes.md <<'EOF'
+          ## Intrakom vVERSION
+
+          ### Receiver — install on every device that should play audio
+
+          | Platform | Download |
+          |---|---|
+          | **Windows** | `intrakom-receiver-windows-x64.zip` |
+          | **macOS** (Apple Silicon) | `intrakom-receiver-macos-arm64.zip` |
+          | **Linux / Raspberry Pi** (arm64) | `intrakom-receiver-linux-arm64.tar.gz` or `.deb` |
+          | **Linux** (x86_64) | `intrakom-receiver-linux-x64.tar.gz` or `.deb` |
+
+          **Windows**: Unzip → double-click `install.bat` → enter room name + hub URL.
+
+          **macOS**: Unzip → open Terminal in the folder → `chmod +x install.sh && ./install.sh` → enter room name + hub URL.
+
+          **Linux (.deb)**: `sudo dpkg -i intrakom-receiver_*.deb` then configure `/etc/default/intrakom-receiver`.
+
+          ### Hub — install once on your always-on device
+
+          See [Hub Setup](docs/hub-setup.md). The hub runs from source — no binary needed.
+
+          ### Sender — no installation
+
+          Open `http://<hub-ip>:8000` in any web browser.
+
+          ---
+
+          ### SHA-256 Checksums
+          EOF
+
+          # Replace VERSION placeholder and append checksums
+          sed -i "s/vVERSION/v${VER}/" release_notes.md
+          echo '```' >> release_notes.md
+          cat checksums.txt >> release_notes.md
+          echo '```' >> release_notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body_path: release_notes.md
+          files: release/*

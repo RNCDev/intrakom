@@ -1,0 +1,15 @@
+[Unit]
+Description=Intrakom Hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/intrakom-hub
+Restart=on-failure
+RestartSec=5
+User=intrakom
+Group=intrakom
+
+[Install]
+WantedBy=multi-user.target

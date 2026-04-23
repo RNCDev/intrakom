@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Intrakom</title>
+  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="theme-color" content="#0d0d14" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d14;
+      --surface:   #16182a;
+      --surface2:  #1e2138;
+      --accent:    #5b6ef5;
+      --accent-dim:#3a4ac4;
+      --live:      #e0483c;
+      --green:     #3ecf8e;
+      --text:      #e8eaf6;
+      --subtext:   #7a7fa8;
+      --border:    rgba(255,255,255,0.07);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px 48px;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 40px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      flex: 1;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--subtext);
+      letter-spacing: 0.03em;
+      transition: color 0.3s;
+    }
+    .status-pill.connected { color: var(--green); }
+
+    #ws-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--subtext);
+      transition: background 0.3s;
+      flex-shrink: 0;
+    }
+    .status-pill.connected #ws-dot { background: var(--green); }
+
+    /* ── Section label ── */
+    .section-label {
+      width: 100%;
+      max-width: 560px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--subtext);
+      margin-bottom: 12px;
+    }
+
+    /* ── Receiver grid ── */
+    #receivers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 12px;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    .btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 28px 12px 22px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--text);
+      transition: background 0.12s, border-color 0.12s, transform 0.08s;
+      -webkit-touch-callout: none;
+      touch-action: none;
+    }
+
+    .btn:not(.offline):active,
+    .btn.live {
+      transform: scale(0.97);
+      background: var(--surface2);
+      border-color: var(--accent);
+    }
+
+    .btn.offline {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Mic ring — animated when live */
+    .mic-ring {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      position: relative;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .btn.live .mic-ring {
+      background: var(--live);
+    }
+    .btn.live .mic-ring::after {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 2px solid var(--live);
+      animation: ripple 1s ease-out infinite;
+    }
+    @keyframes ripple {
+      0%   { transform: scale(1);   opacity: 0.7; }
+      100% { transform: scale(1.5); opacity: 0; }
+    }
+
+    .btn-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      text-align: center;
+      pointer-events: none;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .live-badge {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--live);
+      color: #fff;
+      font-size: 0.6rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 5px;
+      letter-spacing: 0.08em;
+      animation: blink 0.9s infinite alternate;
+    }
+    .btn.live .live-badge { display: block; }
+    @keyframes blink { from { opacity: 1; } to { opacity: 0.35; } }
+
+    /* All button gets accent tint */
+    .btn[data-all="true"] .mic-ring { background: #2a2d4a; }
+    .btn[data-all="true"].live .mic-ring { background: var(--live); }
+
+    /* ── Empty state ── */
+    #no-receivers {
+      grid-column: 1 / -1;
+      color: var(--subtext);
+      font-size: 0.9rem;
+      padding: 24px 0;
+      text-align: center;
+    }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 36px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #2a1e1e;
+      border: 1px solid var(--live);
+      color: #f88;
+      padding: 10px 22px;
+      border-radius: 50px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: transform 0.28s ease;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Mic error ── */
+    #mic-error {
+      margin-top: 28px;
+      background: #1e1212;
+      border: 1px solid #6b2020;
+      border-radius: 14px;
+      padding: 18px 20px;
+      max-width: 480px;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      display: none;
+      color: #ccc;
+      width: 100%;
+    }
+    #mic-error.show { display: block; }
+    #mic-error strong { color: #e06060; display: block; margin-bottom: 8px; }
+
+    /* ── Hold hint ── */
+    .hold-hint {
+      margin-top: 28px;
+      font-size: 0.78rem;
+      color: var(--subtext);
+      letter-spacing: 0.03em;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📡</div>
+  <h1>Intrakom</h1>
+  <div class="status-pill" id="status-pill">
+    <div id="ws-dot"></div>
+    <span id="status-label">Connecting</span>
+  </div>
+</header>
+
+<div class="section-label">Receivers</div>
+
+<div id="receivers-grid">
+  <p id="no-receivers">Searching for receivers…</p>
+</div>
+
+<div class="hold-hint">Hold to talk · Release to stop</div>
+
+<div id="mic-error">
+  <strong>Microphone access denied</strong>
+  <b>iOS Safari:</b> Settings → Safari → Microphone → Allow.<br>
+  <b>Android Chrome:</b> Tap the lock icon → Microphone → Allow.<br>
+  Then reload this page.
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let ws = null;
+  let wsConnected = false;
+  let mediaStream = null;
+  let audioContext = null;
+  let scriptProcessor = null;
+  let activeButton = null;
+  let activeTargets = [];
+  const SAMPLE_RATE = 16000;
+
+  const statusPill  = document.getElementById("status-pill");
+  const statusLabel = document.getElementById("status-label");
+  let wsBackoffMs = 2000;
+  const WS_BACKOFF_MAX_MS = 30000;
+
+  function setConnected(on) {
+    if (on) {
+      statusPill.classList.add("connected");
+      statusLabel.textContent = "Connected";
+    } else {
+      statusPill.classList.remove("connected");
+      statusLabel.textContent = "Offline";
+    }
+  }
+
+  function connectWS() {
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    ws = new WebSocket(`${proto}://${location.host}/ws/sender`);
+    ws.binaryType = "arraybuffer";
+
+    ws.onopen = () => {
+      wsConnected = true;
+      setConnected(true);
+      wsBackoffMs = 2000;
+    };
+
+    ws.onclose = () => {
+      wsConnected = false;
+      setConnected(false);
+      stopCapture();
+      const next = Math.min(wsBackoffMs * 2, WS_BACKOFF_MAX_MS);
+      wsBackoffMs = next * (1 + (Math.random() * 0.4 - 0.2));
+      setTimeout(connectWS, wsBackoffMs);
+    };
+
+    ws.onerror = () => ws.close();
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "BUSY") {
+          showToast(`${data.receiver} is busy`);
+        } else if (data.type === "RECEIVERS_UPDATE") {
+          buildButtons(data.receivers);
+        }
+      } catch (e) {}
+    };
+  }
+
+  const grid  = document.getElementById("receivers-grid");
+  const noRec = document.getElementById("no-receivers");
+
+  function buildButtons(receivers) {
+    if (activeButton) return;
+    const liveNames = new Set(activeTargets);
+    grid.innerHTML = "";
+
+    if (receivers.length === 0) {
+      grid.appendChild(noRec);
+      noRec.textContent = "No receivers found.";
+      return;
+    }
+
+    receivers.forEach(r => grid.appendChild(makeButton(r.name, "🎙️", !r.online, liveNames.has(r.name))));
+
+    const online = receivers.filter(r => r.online);
+    if (online.length > 1) {
+      const all = makeButton("All", "📢", false, activeTargets.length > 1 && liveNames.size === online.length);
+      all.dataset.all = "true";
+      grid.appendChild(all);
+    }
+  }
+
+  function makeButton(name, icon, offline, isLive) {
+    const btn = document.createElement("button");
+    btn.className = "btn" + (offline ? " offline" : "") + (isLive ? " live" : "");
+    btn.dataset.name = name;
+    btn.innerHTML = `
+      <div class="mic-ring">${icon}</div>
+      <span class="btn-label">${name}</span>
+      <span class="live-badge">LIVE</span>
+    `;
+    if (!offline) {
+      btn.addEventListener("pointerdown",  onPointerDown);
+      btn.addEventListener("pointerup",    onPointerUp);
+      btn.addEventListener("pointercancel",onPointerUp);
+      btn.addEventListener("pointerleave", onPointerUp);
+    }
+    return btn;
+  }
+
+  async function fetchReceivers() {
+    try {
+      const resp = await fetch("/receivers");
+      if (!resp.ok) return;
+      buildButtons(await resp.json());
+    } catch (e) {}
+  }
+
+  fetchReceivers();
+  setInterval(fetchReceivers, 30000);
+
+  async function onPointerDown(e) {
+    if (!wsConnected) return;
+    e.preventDefault();
+    const btn = e.currentTarget;
+    if (activeButton) return;
+
+    let targets;
+    if (btn.dataset.all === "true") {
+      targets = Array.from(grid.querySelectorAll(".btn:not(.offline):not([data-all])")).map(b => b.dataset.name);
+    } else {
+      targets = [btn.dataset.name];
+    }
+
+    if (!mediaStream) {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: { sampleRate: SAMPLE_RATE, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+        });
+        document.getElementById("mic-error").classList.remove("show");
+      } catch (err) {
+        document.getElementById("mic-error").classList.add("show");
+        return;
+      }
+    }
+
+    activeTargets = targets;
+    activeButton  = btn;
+    btn.classList.add("live");
+    btn.setPointerCapture(e.pointerId);
+
+    audioContext    = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: SAMPLE_RATE });
+    ws.send(JSON.stringify({ type: "START", targets, sampleRate: audioContext.sampleRate }));
+
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+
+    const CHUNK_BYTES  = 2048 * 2;
+    const MAX_BUFFERED = CHUNK_BYTES * 3;
+
+    scriptProcessor.onaudioprocess = (event) => {
+      if (!wsConnected || ws.readyState !== WebSocket.OPEN) return;
+      if (ws.bufferedAmount > MAX_BUFFERED) return;
+      const float32 = event.inputBuffer.getChannelData(0);
+      const int16   = Int16Array.from(float32, s => Math.max(-32768, Math.min(32767, s * 32767 | 0)));
+      ws.send(int16.buffer);
+    };
+
+    source.connect(scriptProcessor);
+    scriptProcessor.connect(audioContext.destination);
+  }
+
+  function onPointerUp(e) { if (activeButton) stopCapture(); }
+
+  function stopCapture() {
+    if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
+    if (audioContext)    { audioContext.close().catch(() => {}); audioContext = null; }
+    if (activeButton)    { activeButton.classList.remove("live"); activeButton = null; }
+    if (wsConnected && ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "STOP" }));
+    activeTargets = [];
+  }
+
+  let toastTimer = null;
+  const toastEl  = document.getElementById("toast");
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2000);
+  }
+
+  connectWS();
+</script>
+</body>
+</html>

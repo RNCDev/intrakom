@@ -1,0 +1,51 @@
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+build/
+dist/
+*.egg-info/
+*.spec.bak
+
+# ── PyInstaller runtime temp ──────────────────────────────────────────────────
+_MEIPASS*/
+
+# ── Test / coverage ───────────────────────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ── Python bytecode ───────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Secrets & TLS certs — never commit ───────────────────────────────────────
+cert.pem
+cert.key
+cert.conf
+*.pem
+*.key
+
+# ── Machine-specific runtime files ───────────────────────────────────────────
+config.ini
+*.log
+*.log.*
+assets/
+
+# ── macOS noise ───────────────────────────────────────────────────────────────
+.DS_Store
+._*
+
+# ── Windows noise ────────────────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+
+# ── Claude / tooling ─────────────────────────────────────────────────────────
+.claude/scheduled_tasks.lock
+.worktrees/
+.superpowers/
+docs/superpowers/
+*.local.md
