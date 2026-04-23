@@ -124,3 +124,9 @@ or
 ```
 
 mDNS often fails across Wi-Fi access points or through VLANs. Using the IP address directly is more reliable.
+
+---
+
+## Receiver shows online in admin but audio doesn't play
+
+As of v0.2.0 the hub sends WebSocket ping frames every 20 seconds. If no pong arrives within 10 seconds the connection is closed and the receiver reconnects automatically. If you see frequent reconnects, check that your network or firewall is not blocking WebSocket keepalive frames.

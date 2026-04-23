@@ -87,6 +87,10 @@ Jitter buffer fill: `bytes_needed = sample_rate × (jitter_ms / 1000) × 2` (Int
 - Receiver config lives at `~/.intrakom/config.ini`. Written on first run with --name + --hub args.
 - `_sample_rate` is written by ws-client before setting `_buf_ready`. Playback reads it after wake — no lock needed (Event provides the memory barrier).
 - `INTRAKOM_DISABLE_MDNS=1` skips zeroconf entirely (used by tests to avoid 5s timeout).
+- The audio queue in `receiver.py` is bounded at `_AUDIO_QUEUE_MAX_CHUNKS = 200` chunks. `_enqueue_audio()` enforces the cap; oldest chunk is dropped when full with a rate-limited warning.
+- The playback `RawOutputStream` is kept open across START/STOP cycles via `_playback_iteration()`. It is only closed and reopened if `_sample_rate` changes or a write error occurs.
+- Uvicorn is configured with `ws_ping_interval=20, ws_ping_timeout=10` in `hub.py` (via `_build_uvicorn_kwargs()`). This is the keepalive mechanism for receivers — no application-level ping messages are used.
+- The admin page at `/admin` uses JS polling of `/receivers` every 10s (via `setInterval`) instead of `<meta http-equiv="refresh">`.
 
 ## Building receiver binaries
 

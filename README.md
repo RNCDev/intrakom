@@ -76,8 +76,8 @@ Open `http://<hub-ip>:8000` in any browser on your network. Hold a button to tal
 Browser (Float32 mic) → Int16 → WebSocket → Hub → WebSocket → Receiver → sounddevice
 ```
 
-- **`intrakom/server.py`** — FastAPI hub. Enforces one-sender-per-receiver. Forwards raw PCM bytes unchanged. Advertises mDNS for auto-discovery.
-- **`intrakom/receiver.py`** — headless daemon. WebSocket client with jitter buffer + `sounddevice.RawOutputStream` playback. Two threads: WebSocket client + audio playback.
+- **`intrakom/server.py`** — FastAPI hub. Enforces one-sender-per-receiver. Forwards raw PCM bytes unchanged. Advertises mDNS for auto-discovery. Startup banner logs port, TLS, and mDNS status. Uvicorn configured with WS ping/pong (20s interval, 10s timeout) to detect stale receiver connections.
+- **`intrakom/receiver.py`** — headless daemon. WebSocket client with bounded jitter buffer (`_AUDIO_QUEUE_MAX_CHUNKS = 200`) + `sounddevice.RawOutputStream` playback. Stream is kept open between transmissions and only reopened when sample rate changes. Two threads: WebSocket client + audio playback.
 - **`static/index.html`** — PWA sender. Converts Float32→Int16 (`Int16Array.from(s => s * 32767 | 0)`), streams binary WebSocket frames.
 
 ---

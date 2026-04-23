@@ -42,11 +42,13 @@ python hub.py
 
 You should see output like:
 ```
-============================================================
-  Intrakom Server Ready
+  ============================================================
+  Intercom Server Ready
   LAN URL:      http://192.168.1.10:8000
-  Hostname URL: http://raspberrypi:8000
-============================================================
+  Hostname URL: http://pi.local:8000
+  TLS:          disabled (no cert)
+  mDNS:         enabled
+  ============================================================
 ```
 
 Open that URL in a browser on any device. You should see the sender page.
