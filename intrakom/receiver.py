@@ -17,6 +17,7 @@ import logging
 import ssl as _ssl
 import sys
 import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -111,13 +112,12 @@ _queue_drop_warned_at: float = 0.0
 def _enqueue_audio(chunk: bytes) -> None:
     """Append audio chunk to queue, dropping the oldest if at capacity."""
     global _buffered_bytes, _queue_drop_warned_at
-    import time as _time
 
     with _audio_cv:
         if len(_audio_queue) >= _AUDIO_QUEUE_MAX_CHUNKS:
             dropped = _audio_queue.popleft()
             _buffered_bytes -= len(dropped)
-            now = _time.monotonic()
+            now = time.monotonic()
             if now - _queue_drop_warned_at >= 5.0:
                 _queue_drop_warned_at = now
                 logger.warning(

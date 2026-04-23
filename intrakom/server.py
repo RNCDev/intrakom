@@ -49,7 +49,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from intrakom import __version__
-from intrakom import __version__ as HUB_VERSION
+HUB_VERSION = __version__
 from intrakom import mdns as _mdns
 
 # ---------------------------------------------------------------------------
@@ -168,10 +168,18 @@ async def ping():
 
 @app.get("/receivers")
 async def list_receivers():
-    return [
-        {"name": name, "online": info["online"], "version": info.get("version", "unknown")}
-        for name, info in receivers.items()
-    ]
+    now = time.monotonic()
+    result = []
+    for name, info in receivers.items():
+        last_seen = info.get("last_seen")
+        age = int(now - last_seen) if last_seen is not None else None
+        result.append({
+            "name": name,
+            "online": info["online"],
+            "version": info.get("version", "unknown"),
+            "last_seen_age": age,
+        })
+    return result
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -258,7 +266,9 @@ async def admin_page():
         const online = r.online ? 'online' : 'offline';
         const outdated = latest && r.version && r.version !== 'unknown' && cmp(r.version, latest) < 0;
         const vClass = outdated ? ' class="outdated"' : '';
-        return `<tr><td>${{r.name}}</td><td class="${{online}}">${{online}}</td><td${{vClass}}>${{r.version||'unknown'}}</td><td>—</td></tr>`;
+        const age = r.last_seen_age;
+        const seen = age === null || age === undefined ? '—' : age < 60 ? age + 's ago' : age < 3600 ? Math.floor(age/60) + 'm ago' : Math.floor(age/3600) + 'h ago';
+        return `<tr><td>${{r.name}}</td><td class="${{online}}">${{online}}</td><td${{vClass}}>${{r.version||'unknown'}}</td><td>${{seen}}</td></tr>`;
       }});
       document.getElementById('receiver-body').innerHTML = rows.length ? rows.join('') : '<tr><td colspan=4>No receivers connected yet.</td></tr>';
       document.getElementById('refresh-label').textContent = 'Updated ' + new Date().toLocaleTimeString();
@@ -525,6 +535,7 @@ def _ssl_context():
 
 def main():
     ssl_ctx = _ssl_context()
+    os.environ.setdefault("INTRAKOM_PORT", "8000")
     uvicorn.run(
         "intrakom.server:app",
         host="0.0.0.0",
