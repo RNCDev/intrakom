@@ -41,23 +41,32 @@ if "%HUB_URL%"=="" (
 )
 
 echo.
+echo  Checking hub is reachable at %HUB_URL% ...
+powershell -NoProfile -Command ^
+  "try { $r = Invoke-WebRequest -Uri '%HUB_URL%/ping' -TimeoutSec 5 -UseBasicParsing; exit 0 } catch { exit 1 }" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo.
+    echo  WARNING: Could not reach %HUB_URL%
+    echo  Make sure the hub is running and the URL is correct.
+    echo.
+    set /p "_CONT=  Continue anyway? [y/N] "
+    if /i not "!_CONT!"=="y" (
+        pause
+        exit /b 1
+    )
+)
+
+echo.
 echo  Installing receiver "%RECEIVER_NAME%" pointing to %HUB_URL%
 echo.
 
-:: Remove any existing task with the same name first
-schtasks /Query /TN "Intrakom Receiver" >nul 2>&1
-if %errorlevel%==0 (
-    echo  Removing existing scheduled task...
-    schtasks /Delete /TN "Intrakom Receiver" /F >nul 2>&1
-)
-
-:: Create scheduled task: runs at every logon, 10s delay, restarts on failure
-schtasks /Create ^
-  /SC ONLOGON ^
-  /TN "Intrakom Receiver" ^
-  /TR "\"%EXE%\" --name \"%RECEIVER_NAME%\" --hub \"%HUB_URL%\"" ^
-  /DELAY 0000:10 ^
-  /F >nul
+:: Create/replace scheduled task via PowerShell so we can set restart-on-failure
+powershell -NoProfile -Command ^
+  "$exe = '%EXE%'; $name = '%RECEIVER_NAME%'; $hub = '%HUB_URL%';" ^
+  "$action  = New-ScheduledTaskAction -Execute $exe -Argument ('--name \"' + $name + '\" --hub \"' + $hub + '\"');" ^
+  "$trigger = New-ScheduledTaskTrigger -AtLogOn;" ^
+  "$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Days 3650) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1);" ^
+  "Register-ScheduledTask -TaskName 'Intrakom Receiver' -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null"
 
 if %errorlevel% neq 0 (
     echo ERROR: Failed to create scheduled task. Try running as Administrator.

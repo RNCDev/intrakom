@@ -66,7 +66,7 @@ Open `http://<hub-ip>:8000` in any browser on your network. Hold a button to tal
 
 ## Admin page
 
-`http://<hub-ip>:8000/admin` shows all receivers, their online/offline status, and when they were last seen. Auto-refreshes every 10 seconds.
+`http://<hub-ip>:8000/admin` shows all receivers, their online/offline status, and when they were last seen. Auto-refreshes every 30 seconds.
 
 ---
 

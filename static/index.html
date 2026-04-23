@@ -470,6 +470,17 @@
   }
 
   connectWS();
+
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: "microphone" }).then(status => {
+      if (status.state === "denied") {
+        document.getElementById("mic-error").classList.add("show");
+      }
+      status.onchange = () => {
+        document.getElementById("mic-error").classList.toggle("show", status.state === "denied");
+      };
+    }).catch(() => {});
+  }
 </script>
 </body>
 </html>

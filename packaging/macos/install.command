@@ -40,6 +40,16 @@ if [ -z "$HUB_URL" ]; then
 fi
 
 echo ""
+echo " Checking hub is reachable at $HUB_URL ..."
+if ! curl -fsS --max-time 5 "$HUB_URL/ping" > /dev/null 2>&1; then
+    echo ""
+    echo " WARNING: Could not reach $HUB_URL"
+    echo " Make sure the hub is running and the URL is correct."
+    read -rp " Continue anyway? [y/N] " _yn
+    case "$_yn" in [yY]*) ;; *) exit 1 ;; esac
+fi
+
+echo ""
 echo " Installing receiver \"$RECEIVER_NAME\" pointing to $HUB_URL"
 echo ""
 

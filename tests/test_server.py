@@ -340,3 +340,22 @@ def test_admin_page_has_js_polling(client):
     resp = client.get("/admin")
     assert "setInterval" in resp.text
     assert "/receivers" in resp.text
+
+
+def test_admin_page_polling_interval_30s(client):
+    resp = client.get("/admin")
+    assert "setInterval(refresh, 30000)" in resp.text
+
+
+def test_admin_page_refresh_called_on_load(client):
+    resp = client.get("/admin")
+    # refresh() must appear as a standalone call (not just inside setInterval)
+    import re
+    # Match refresh() on its own line or after closing brace, not as setInterval arg
+    assert re.search(r'setInterval\(refresh,\s*30000\)', resp.text)
+    # And a bare refresh() call must exist outside the setInterval declaration
+    text = resp.text
+    interval_pos = text.find("setInterval(refresh")
+    bare_pos = text.find("refresh();")
+    assert bare_pos != -1, "refresh() standalone call not found"
+    assert bare_pos != interval_pos

@@ -77,6 +77,8 @@ Instead of `http://raspberrypi:8000`, try `http://192.168.1.10:8000` (the actual
 
 ## Microphone permission denied in browser
 
+The sender page now checks microphone permission on load. If access is already blocked, a warning banner appears immediately — you don't need to press a button to find out.
+
 **Chrome/Edge:**
 1. Click the lock icon in the address bar
 2. Click "Site permissions" or the microphone icon
@@ -124,6 +126,19 @@ or
 ```
 
 mDNS often fails across Wi-Fi access points or through VLANs. Using the IP address directly is more reliable.
+
+---
+
+## Windows receiver stopped working after a crash
+
+As of v0.2.1 the scheduled task created by `install.bat` restarts automatically on failure (up to 3 times, 1 minute apart). If the receiver crashes more than 3 times before you next log in, restart it manually:
+
+```
+schtasks /End /TN "Intrakom Receiver"
+schtasks /Run /TN "Intrakom Receiver"
+```
+
+Or log out and back in — the task runs at every login.
 
 ---
 

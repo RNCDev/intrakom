@@ -33,7 +33,9 @@ It will ask you two questions:
 1. **Receiver name** — what to call this room (e.g. `Living Room`)
 2. **Hub URL** — the address of your hub (e.g. `http://192.168.1.10:8000`)
 
-Type each answer and press Enter.
+Type each answer and press Enter. The installer will verify the hub is reachable before proceeding.
+
+The receiver is registered as a scheduled task that restarts automatically if it crashes (up to 3 times, 1 minute apart).
 
 ### 4. Verify
 
@@ -65,7 +67,7 @@ It will ask you two questions:
 1. **Receiver name** — what to call this room (e.g. `Living Room`)
 2. **Hub URL** — the address of your hub (e.g. `http://192.168.1.10:8000`)
 
-Type each answer and press Enter.
+Type each answer and press Enter. The installer will verify the hub is reachable before proceeding.
 
 ### 5. Verify
 

@@ -274,7 +274,8 @@ async def admin_page():
       document.getElementById('refresh-label').textContent = 'Updated ' + new Date().toLocaleTimeString();
     }}).catch(() => {{}});
   }}
-  setInterval(refresh, 10000);
+  setInterval(refresh, 30000);
+  refresh();
 </script>
 </body></html>"""
     return html
