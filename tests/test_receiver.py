@@ -21,6 +21,7 @@ def reset_audio_state():
     rcv._stop_evt.clear()
     rcv._stream = None
     rcv._stream_sr = 0
+    rcv._queue_drop_warned_at = -6.0
     yield
     rcv._audio_queue.clear()
     rcv._buffered_bytes = 0
@@ -28,6 +29,7 @@ def reset_audio_state():
     rcv._stop_evt.clear()
     rcv._stream = None
     rcv._stream_sr = 0
+    rcv._queue_drop_warned_at = -6.0
 
 
 def test_queue_accepts_chunks_below_cap():

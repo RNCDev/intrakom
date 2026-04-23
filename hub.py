@@ -4,7 +4,7 @@ import os
 import uvicorn
 
 
-def _build_uvicorn_kwargs(port: int, cert: str | None = None, key: str | None = None) -> dict:
+def _build_uvicorn_kwargs(port: int, cert=None, key=None) -> dict:
     """Return the kwargs dict for uvicorn.run(). Extracted for testability."""
     kwargs: dict = dict(
         app="intrakom.server:app",

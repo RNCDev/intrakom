@@ -106,7 +106,7 @@ _stream: Optional[sd.RawOutputStream] = None
 _stream_sr: int = 0
 
 _AUDIO_QUEUE_MAX_CHUNKS = 200   # ~6s at 16kHz mono int16, ~400KB
-_queue_drop_warned_at: float = 0.0
+_queue_drop_warned_at: float = -6.0  # ensures first drop always warns
 
 
 def _enqueue_audio(chunk: bytes) -> None:
