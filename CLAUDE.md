@@ -48,6 +48,7 @@ docs/
   receiver-setup.md      Windows + macOS receiver install guide
   sender-guide.md        how to use the browser sender
   troubleshooting.md     common issues
+  uninstall-guide.md     full uninstall steps for all platforms
 
 hub.py                   entry point: python hub.py [--port 8000]
 receiver.spec            PyInstaller spec (onefile, all platforms, points to intrakom/receiver.py)
