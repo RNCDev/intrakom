@@ -307,6 +307,14 @@ def test_startup_banner_logs_port_scheme_mdns(caplog, client):
     assert "mDNS:" in log_text
 
 
+def test_uvicorn_kwargs_include_ws_ping_settings():
+    """hub._build_uvicorn_kwargs must include ws_ping_interval and ws_ping_timeout."""
+    import hub as hub_mod
+    kwargs = hub_mod._build_uvicorn_kwargs(port=8000)
+    assert kwargs.get("ws_ping_interval") == 20
+    assert kwargs.get("ws_ping_timeout") == 10
+
+
 def test_record_fwd_warn_evicts_oldest_at_capacity():
     srv._last_fwd_warn.clear()
     # Fill to capacity

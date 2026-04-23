@@ -508,6 +508,8 @@ def main():
         host="0.0.0.0",
         port=8000,
         reload=False,
+        ws_ping_interval=20,
+        ws_ping_timeout=10,
         ssl_certfile=str(_REPO_ROOT / "cert.pem") if ssl_ctx else None,
         ssl_keyfile=str(_REPO_ROOT / "cert.key") if ssl_ctx else None,
     )
