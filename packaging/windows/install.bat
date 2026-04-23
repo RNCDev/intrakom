@@ -1,6 +1,14 @@
 @echo off
 setlocal EnableDelayedExpansion
 
+:: Self-elevate to Administrator if needed (Register-ScheduledTask requires it)
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    powershell -NoProfile -Command ^
+      "Start-Process cmd -ArgumentList '/c \"%~f0\" %*' -Verb RunAs -Wait"
+    exit /b
+)
+
 echo.
 echo  Intrakom Receiver - Install
 echo  ===========================

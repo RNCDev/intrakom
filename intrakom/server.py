@@ -182,6 +182,20 @@ async def list_receivers():
     return result
 
 
+@app.delete("/receivers/{name}")
+async def delete_receiver(name: str):
+    info = receivers.get(name)
+    if info is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Receiver not found")
+    if info.get("online"):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=409, detail="Receiver is currently online")
+    del receivers[name]
+    await _broadcast_receivers()
+    return {"deleted": name}
+
+
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page():
     try:
@@ -228,7 +242,8 @@ async def admin_page():
         rows.append(
             f"<tr><td>{name}</td><td class='{status}'>{status}</td>"
             f"<td class='{cell_class}'>{v}</td>"
-            f"<td class='{stale_class}'>{seen_str}</td></tr>"
+            f"<td class='{stale_class}'>{seen_str}</td>"
+            f"<td>{'<button onclick=\"removeReceiver(this)\" data-name=\"' + name + '\">Remove</button>' if not info.get('online') else ''}</td></tr>"
         )
 
     html = f"""<!doctype html>
@@ -243,19 +258,28 @@ async def admin_page():
   td.outdated {{ color: #a33; opacity: 0.85; }}
   td.stale {{ color: #999; }}
   .meta {{ color: #666; font-size: 0.9em; }}
+  button {{ font-size: 0.8em; padding: 3px 8px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; color: #a33; }}
+  button:hover {{ background: #fee; }}
 </style></head>
 <body>
   <h1>Intrakom Hub</h1>
   <p class='meta'>Hub v{__version__} &nbsp;·&nbsp; Latest receiver seen: {str(latest) if latest else "—"} &nbsp;·&nbsp; <span id="refresh-label">Updates every 10s</span></p>
   <table>
-    <thead><tr><th>Name</th><th>Status</th><th>Version</th><th>Last Seen</th></tr></thead>
-    <tbody id="receiver-body">{''.join(rows) if rows else '<tr><td colspan=4>No receivers connected yet.</td></tr>'}</tbody>
+    <thead><tr><th>Name</th><th>Status</th><th>Version</th><th>Last Seen</th><th></th></tr></thead>
+    <tbody id="receiver-body">{''.join(rows) if rows else '<tr><td colspan=5>No receivers connected yet.</td></tr>'}</tbody>
   </table>
 <script>
   function cmp(a, b) {{
     const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
     for (let i = 0; i < 3; i++) {{ const d = (pa[i]||0)-(pb[i]||0); if (d) return d; }}
     return 0;
+  }}
+  function removeReceiver(btn) {{
+    const name = btn.dataset.name;
+    if (!confirm('Remove "' + name + '" from the list?')) return;
+    fetch('/receivers/' + encodeURIComponent(name), {{method: 'DELETE'}})
+      .then(r => {{ if (r.ok) refresh(); else r.json().then(j => alert(j.detail || 'Error')); }})
+      .catch(() => alert('Request failed'));
   }}
   function refresh() {{
     fetch('/receivers').then(r => r.json()).then(data => {{
@@ -268,9 +292,10 @@ async def admin_page():
         const vClass = outdated ? ' class="outdated"' : '';
         const age = r.last_seen_age;
         const seen = age === null || age === undefined ? '—' : age < 60 ? age + 's ago' : age < 3600 ? Math.floor(age/60) + 'm ago' : Math.floor(age/3600) + 'h ago';
-        return `<tr><td>${{r.name}}</td><td class="${{online}}">${{online}}</td><td${{vClass}}>${{r.version||'unknown'}}</td><td>${{seen}}</td></tr>`;
+        const removeBtn = r.online ? '' : `<button onclick="removeReceiver(this)" data-name="${{r.name}}">Remove</button>`;
+        return `<tr><td>${{r.name}}</td><td class="${{online}}">${{online}}</td><td${{vClass}}>${{r.version||'unknown'}}</td><td>${{seen}}</td><td>${{removeBtn}}</td></tr>`;
       }});
-      document.getElementById('receiver-body').innerHTML = rows.length ? rows.join('') : '<tr><td colspan=4>No receivers connected yet.</td></tr>';
+      document.getElementById('receiver-body').innerHTML = rows.length ? rows.join('') : '<tr><td colspan=5>No receivers connected yet.</td></tr>';
       document.getElementById('refresh-label').textContent = 'Updated ' + new Date().toLocaleTimeString();
     }}).catch(() => {{}});
   }}
