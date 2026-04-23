@@ -29,15 +29,8 @@ if [ -z "$RECEIVER_NAME" ]; then
     exit 1
 fi
 
-# Get hub URL
-HUB_URL="${2:-}"
-if [ -z "$HUB_URL" ]; then
-    read -rp "Enter the hub URL (e.g. http://192.168.1.10:8000): " HUB_URL
-fi
-if [ -z "$HUB_URL" ]; then
-    echo "ERROR: Hub URL cannot be empty."
-    exit 1
-fi
+# Hub URL is fixed for this household
+HUB_URL="${2:-https://piserver-1005.tail2ace7b.ts.net:8000}"
 
 echo ""
 echo " Checking hub is reachable at $HUB_URL ..."

@@ -37,16 +37,9 @@ if "%RECEIVER_NAME%"=="" (
     exit /b 1
 )
 
-:: Get hub URL
+:: Hub URL is fixed for this household
 set "HUB_URL=%~2"
-if "%HUB_URL%"=="" (
-    set /p "HUB_URL=Enter the hub URL (e.g. http://192.168.1.10:8000): "
-)
-if "%HUB_URL%"=="" (
-    echo ERROR: Hub URL cannot be empty.
-    pause
-    exit /b 1
-)
+if "%HUB_URL%"=="" set "HUB_URL=https://piserver-1005.tail2ace7b.ts.net:8000"
 
 echo.
 echo  Checking hub is reachable at %HUB_URL% ...
