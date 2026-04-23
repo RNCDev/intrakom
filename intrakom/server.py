@@ -107,6 +107,23 @@ def detect_lan_ip() -> str:
 # App
 # ---------------------------------------------------------------------------
 
+_KEEPALIVE_MSG = json.dumps({"type": "KEEPALIVE"})
+_KEEPALIVE_INTERVAL = 25  # seconds
+
+async def _receiver_keepalive():
+    """Send application-level keepalives to all online receivers so they can
+    detect a stale connection via recv timeout rather than relying solely on
+    the WebSocket ping mechanism (which can be unreliable over TLS/Tailscale)."""
+    while True:
+        await asyncio.sleep(_KEEPALIVE_INTERVAL)
+        for info in list(receivers.values()):
+            if info.get("online") and info.get("ws"):
+                try:
+                    await info["ws"].send_text(_KEEPALIVE_MSG)
+                except Exception:
+                    pass
+
+
 @asynccontextmanager
 async def _lifespan(app):
     lan_ip = detect_lan_ip()
@@ -139,9 +156,11 @@ async def _lifespan(app):
             zc = _mdns.advertise_hub(port=port, version=HUB_VERSION)
         except Exception as exc:
             logger.warning("mDNS advertise failed: %s", exc)
+    keepalive_task = asyncio.create_task(_receiver_keepalive())
     try:
         yield
     finally:
+        keepalive_task.cancel()
         if zc is not None:
             try:
                 _mdns.unadvertise(zc)

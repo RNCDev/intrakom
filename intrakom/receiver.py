@@ -223,12 +223,25 @@ async def ws_client(cfg: ReceiverConfig):
         logger.info("Connecting to hub (retry delay %.0fs)", delay)
         try:
             async with websockets.connect(
-                url, ssl=ssl_arg, ping_interval=20, ping_timeout=10
+                url, ssl=ssl_arg, ping_interval=20, ping_timeout=10,
+                close_timeout=10,
             ) as ws:
                 delay = 2.0
                 logger.info("Connected as '%s'", cfg.name)
 
-                async for message in ws:
+                # Use explicit recv with timeout so a dead connection is
+                # detected within _RECV_TIMEOUT seconds even if the WebSocket
+                # ping mechanism fails (e.g. over TLS/Tailscale). The hub
+                # sends a KEEPALIVE every 25s so this timeout is never hit
+                # on a healthy idle connection.
+                _RECV_TIMEOUT = 60
+                while True:
+                    try:
+                        message = await asyncio.wait_for(ws.recv(), timeout=_RECV_TIMEOUT)
+                    except asyncio.TimeoutError:
+                        logger.warning("No message from hub in %ds, reconnecting", _RECV_TIMEOUT)
+                        break
+
                     if isinstance(message, bytes):
                         _enqueue_audio(message)
 
