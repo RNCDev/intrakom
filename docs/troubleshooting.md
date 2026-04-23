@@ -24,7 +24,7 @@ On the hub device, make sure port 8000 is open:
 
 **Reinstall with the correct URL:**
 
-Re-run `install.bat` (Windows) or `./install.sh` (macOS) with the correct hub URL.
+Re-run `install.bat` (Windows) or `install.command` (macOS) with the correct hub URL.
 
 ---
 
@@ -101,7 +101,7 @@ Instead of `http://raspberrypi:8000`, try `http://192.168.1.10:8000` (the actual
 1. Go to **System Settings → Privacy & Security**
 2. Scroll to the Security section
 3. You should see a message about Intrakom — click **Allow Anyway**
-4. Try running `install.sh` again
+4. Try double-clicking `install.command` again
 5. When prompted "Are you sure you want to open it?", click **Open**
 
 ---
@@ -120,7 +120,7 @@ install.bat "Living Room" http://192.168.1.10:8000
 ```
 or
 ```bash
-./install.sh "Living Room" http://192.168.1.10:8000
+./install.command "Living Room" http://192.168.1.10:8000
 ```
 
 mDNS often fails across Wi-Fi access points or through VLANs. Using the IP address directly is more reliable.

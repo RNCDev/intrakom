@@ -57,18 +57,9 @@ Go to the [Releases page](https://github.com/RNCDev/intrakom/releases/latest) an
 
 Double-click the zip to unzip it. Move the resulting folder to a permanent location like `~/Applications/Intrakom/` or `/Applications/Intrakom/`.
 
-### 3. Open Terminal in the folder
+### 3. Install
 
-In Finder, navigate to the folder. Then: **right-click the folder** → **Services** → **New Terminal at Folder**.
-
-(Or open Terminal and `cd` to the folder path.)
-
-### 4. Install
-
-Run:
-```bash
-chmod +x install.sh && ./install.sh
-```
+Double-click `install.command` in Finder. A Terminal window will open and walk you through setup.
 
 It will ask you two questions:
 1. **Receiver name** — what to call this room (e.g. `Living Room`)
@@ -76,20 +67,13 @@ It will ask you two questions:
 
 Type each answer and press Enter.
 
-> **macOS security prompt:** The first time, macOS may block the binary. If you see "cannot be opened because it is from an unidentified developer":
-> 1. Go to **System Settings → Privacy & Security**
-> 2. Scroll down and click **Allow Anyway** next to the Intrakom message
-> 3. Re-run `./install.sh`
-
 ### 5. Verify
 
 Open a browser and go to `http://<hub-ip>:8000/admin`. Your receiver's name should appear with status **online**.
 
 ### Uninstall
 
-```bash
-./uninstall.sh
-```
+Double-click `uninstall.sh` in Finder, or run `./uninstall.sh` in Terminal.
 
 ---
 
@@ -129,6 +113,6 @@ sudo systemctl status intrakom-receiver
 
 ## Running multiple receivers on one machine
 
-If you have one machine with multiple audio outputs (e.g. bedroom speakers and living room speakers), you can run multiple receivers by installing with different names. Run `install.bat` or `install.sh` again with a different name — each instance is registered as a separate scheduled task / launchd agent.
+If you have one machine with multiple audio outputs (e.g. bedroom speakers and living room speakers), you can run multiple receivers by installing with different names. Run `install.bat` (Windows) or `install.command` (macOS) again with a different name — each instance is registered as a separate scheduled task / launchd agent.
 
 > Note: On Windows, each additional receiver needs a unique Task Scheduler task name. The install script names the task `Intrakom Receiver`. For a second one, edit `install.bat` and change the `/TN` value before running.

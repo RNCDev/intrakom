@@ -88,10 +88,10 @@ jobs:
           B="dist/intrakom-receiver-${{ matrix.label }}"
           mkdir -p "$B"
           cp dist/intrakom-receiver "$B/"
-          cp packaging/macos/install.sh "$B/"
+          cp packaging/macos/install.command "$B/"
           cp packaging/macos/uninstall.sh "$B/"
           cp packaging/macos/com.intrakom.receiver.plist.template "$B/"
-          chmod +x "$B/install.sh" "$B/uninstall.sh"
+          chmod +x "$B/install.command" "$B/uninstall.sh"
           cd dist && zip -r "intrakom-receiver-${{ matrix.label }}.zip" "intrakom-receiver-${{ matrix.label }}"
 
       - name: Bundle (Windows)
@@ -187,7 +187,7 @@ jobs:
 
           **Windows**: Unzip → double-click `install.bat` → enter room name + hub URL.
 
-          **macOS**: Unzip → open Terminal in the folder → `chmod +x install.sh && ./install.sh` → enter room name + hub URL.
+          **macOS**: Unzip → double-click `install.command` → enter room name + hub URL.
 
           **Linux (.deb)**: `sudo dpkg -i intrakom-receiver_*.deb` then configure `/etc/default/intrakom-receiver`.
 

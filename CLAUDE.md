@@ -40,7 +40,7 @@ static/
 
 packaging/
   linux/                 systemd service files + build_packages.sh
-  macos/                 install.sh, uninstall.sh, plist template
+  macos/                 install.command, uninstall.sh, plist template
   windows/               install.bat, uninstall.bat
 
 docs/

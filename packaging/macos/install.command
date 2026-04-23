@@ -17,6 +17,7 @@ if [ ! -f "$EXE" ]; then
 fi
 
 chmod +x "$EXE"
+xattr -dr com.apple.quarantine "$EXE" 2>/dev/null || true
 
 # Get receiver name
 RECEIVER_NAME="${1:-}"
