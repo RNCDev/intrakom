@@ -225,7 +225,6 @@ async def admin_page():
 
     html = f"""<!doctype html>
 <html><head><title>Intrakom Hub — Admin</title>
-<meta http-equiv="refresh" content="10">
 <style>
   body {{ font-family: -apple-system, system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }}
   table {{ border-collapse: collapse; width: 100%; }}
@@ -239,11 +238,34 @@ async def admin_page():
 </style></head>
 <body>
   <h1>Intrakom Hub</h1>
-  <p class='meta'>Hub v{__version__} &nbsp;·&nbsp; Latest receiver seen: {str(latest) if latest else "—"} &nbsp;·&nbsp; Auto-refreshes every 10s</p>
+  <p class='meta'>Hub v{__version__} &nbsp;·&nbsp; Latest receiver seen: {str(latest) if latest else "—"} &nbsp;·&nbsp; <span id="refresh-label">Updates every 10s</span></p>
   <table>
     <thead><tr><th>Name</th><th>Status</th><th>Version</th><th>Last Seen</th></tr></thead>
-    <tbody>{''.join(rows) if rows else '<tr><td colspan=4>No receivers connected yet.</td></tr>'}</tbody>
+    <tbody id="receiver-body">{''.join(rows) if rows else '<tr><td colspan=4>No receivers connected yet.</td></tr>'}</tbody>
   </table>
+<script>
+  function cmp(a, b) {{
+    const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+    for (let i = 0; i < 3; i++) {{ const d = (pa[i]||0)-(pb[i]||0); if (d) return d; }}
+    return 0;
+  }}
+  function refresh() {{
+    fetch('/receivers').then(r => r.json()).then(data => {{
+      const versions = data.map(r => r.version).filter(v => v && v !== 'unknown');
+      versions.sort(cmp);
+      const latest = versions[versions.length - 1] || null;
+      const rows = data.slice().sort((a,b) => a.name.localeCompare(b.name)).map(r => {{
+        const online = r.online ? 'online' : 'offline';
+        const outdated = latest && r.version && r.version !== 'unknown' && cmp(r.version, latest) < 0;
+        const vClass = outdated ? ' class="outdated"' : '';
+        return `<tr><td>${{r.name}}</td><td class="${{online}}">${{online}}</td><td${{vClass}}>${{r.version||'unknown'}}</td><td>—</td></tr>`;
+      }});
+      document.getElementById('receiver-body').innerHTML = rows.length ? rows.join('') : '<tr><td colspan=4>No receivers connected yet.</td></tr>';
+      document.getElementById('refresh-label').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    }}).catch(() => {{}});
+  }}
+  setInterval(refresh, 10000);
+</script>
 </body></html>"""
     return html
 

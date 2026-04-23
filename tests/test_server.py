@@ -327,3 +327,16 @@ def test_record_fwd_warn_evicts_oldest_at_capacity():
     assert "rx0" not in srv._last_fwd_warn
     assert "new" in srv._last_fwd_warn
     srv._last_fwd_warn.clear()
+
+
+def test_admin_page_has_no_meta_refresh(client):
+    resp = client.get("/admin")
+    assert resp.status_code == 200
+    assert 'http-equiv="refresh"' not in resp.text
+    assert "http-equiv='refresh'" not in resp.text
+
+
+def test_admin_page_has_js_polling(client):
+    resp = client.get("/admin")
+    assert "setInterval" in resp.text
+    assert "/receivers" in resp.text
