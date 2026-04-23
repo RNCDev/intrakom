@@ -31,6 +31,9 @@ def main():
     if cert and key:
         kwargs["ssl_certfile"] = cert
         kwargs["ssl_keyfile"] = key
+        os.environ["INTRAKOM_SCHEME"] = "https"
+    else:
+        os.environ["INTRAKOM_SCHEME"] = "http"
 
     uvicorn.run(**kwargs)
 

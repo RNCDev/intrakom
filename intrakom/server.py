@@ -16,6 +16,7 @@ import asyncio
 import collections
 import json
 import logging
+import os
 import re
 import socket
 import sys
@@ -113,7 +114,7 @@ async def _lifespan(app):
     hostname = socket.gethostname()
     logger.info("=" * 60)
     logger.info("Intercom server starting up")
-    scheme = "https" if _ssl_context() else "http"
+    scheme = os.environ.get("INTRAKOM_SCHEME", "https" if _ssl_context() else "http")
     logger.info("LAN URL:      %s://%s:8000", scheme, lan_ip)
     logger.info("Hostname URL: %s://%s:8000", scheme, hostname)
     logger.info("=" * 60)
@@ -121,8 +122,6 @@ async def _lifespan(app):
     print(f"  Intercom Server Ready")
     print(f"  LAN URL:      {scheme}://{lan_ip}:8000")
     print(f"  Hostname URL: {scheme}://{hostname}:8000")
-    if scheme == "https":
-        print(f"  NOTE: Browser will warn about self-signed cert — click Advanced → Proceed")
     print(f"{'='*60}\n")
 
     zc = None
